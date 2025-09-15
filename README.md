@@ -1,1 +1,1 @@
-# mealie
+# mealy
