@@ -1,37 +1,75 @@
 version: "3.8"
 
 services:
-  # Контейнер для FastAPI
-  web:
+  # Контейнер для api
+  api:
+    container_name: ${APP_NAME}-api
     build: .
     ports:
       - "8000:8000"
     depends_on:
       - postgres
     environment:
-      - DB_URL=postgresql+asyncpg://mealy:123@postgres:5432/mealy
-      - API_BASE_URL=/api/v1
-    volumes:
-      - .:/app  # Монтируем текущую директорию в контейнер для разработки
+      - APP_NAME=${APP_NAME}
+      - FASTAPI_ENV=${FASTAPI_ENV}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - DB_URL=postgresql+asyncpg://${APP_NAME}:${SECRET_KEY}@postgres:5432/${APP_NAME}
+      - API_BASE_URL=${API_BASE_URL}
 
-  # Контейнер для PostgreSQL
+  # Контейнер для postgres
   postgres:
-    image: postgres:13
+    container_name: ${APP_NAME}-pg
+    image: postgres:15
     environment:
-      - POSTGRES_USER=mealy
-      - POSTGRES_PASSWORD=123
-      - POSTGRES_DB=mealy
+      - POSTGRES_USER=${APP_NAME}
+      - POSTGRES_PASSWORD=${SECRET_KEY}
+      - POSTGRES_DB=${APP_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - app_network
+  
+  # Airflow Webserver
+  airflow-webserver:
+    container_name: ${APP_NAME}-airflow-webserver
+    image: apache/airflow:3.1.0
+    restart: always
+    depends_on:
+      - postgres
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${APP_NAME}:${SECRET_KEY}@postgres:5432/${APP_NAME}_airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
+      - _AIRFLOW_WWW_USER_CREATE=True
+      - _AIRFLOW_WWW_USER_USERNAME=${APP_NAME}
+      - _AIRFLOW_WWW_USER_PASSWORD=${SECRET_KEY}
+      - _AIRFLOW_WWW_USER_FIRSTNAME=Admin
+      - _AIRFLOW_WWW_USER_LASTNAME=${APP_NAME}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    ports:
+      - "8080:8080"
 
-# Определяем тома для сохранения данных
+  # Airflow Scheduler
+  airflow-scheduler:
+    container_name: ${APP_NAME}-airflow-scheduler
+    image: apache/airflow:3.1.0
+    restart: always
+    depends_on:
+      - postgres
+      - airflow-webserver
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${APP_NAME}:${SECRET_KEY}@postgres:5432/${APP_NAME}_airflow
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+    command: airflow scheduler
+
 volumes:
   postgres_data:
-
-networks:
-  app_network:
-    driver: bridge

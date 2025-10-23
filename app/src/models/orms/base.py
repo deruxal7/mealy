@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from ...config import settings
 
-db_url = str(settings.DB_URL)
+db_url = str(settings.db_url)
 
 engine = create_async_engine(db_url)
 asession = sessionmaker(

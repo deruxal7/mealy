@@ -1,18 +1,22 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
-from .config import settings
-from .models.orms.base import create_tables
-from .routers.recipe import router as recipe_router
-from .routers.base import router as base_router
+from src.config import settings
+from src.models.orms.base import create_tables
+from src.routers.recipe import router as recipe_router
+from src.routers.base import router as base_router
 
-app = FastAPI(title = "Mealie",
-              description = "My education project for view recipes",
-              docs_url = f"{settings.API_BASE_URL}/swagger"
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await create_tables()
+    yield
+
+app = FastAPI(
+    title = "Mealie",
+    description = "My education project for view recipes",
+    docs_url = f"{settings.api_base_url}/swagger",
+    lifespan=lifespan,
 )
 
-@app.on_event("startup")
-async def on_startup():
-    await create_tables()
-
-app.include_router(recipe_router, prefix=settings.API_BASE_URL)
-app.include_router(base_router, prefix=settings.API_BASE_URL)
+app.include_router(recipe_router, prefix=settings.api_base_url)
+app.include_router(base_router, prefix=settings.api_base_url)
