@@ -2,7 +2,6 @@ from sqlalchemy import (
     ARRAY,
     Column, 
     Integer,
-    JSON, 
     String,
 )
 

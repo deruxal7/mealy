@@ -13,8 +13,9 @@ services:
       - APP_NAME=${APP_NAME}
       - FASTAPI_ENV=${FASTAPI_ENV}
       - LOG_LEVEL=${LOG_LEVEL}
-      - DB_URL=postgresql+asyncpg://${APP_NAME}:${SECRET_KEY}@postgres:5432/${APP_NAME}
+      - DB_URL=postgresql+asyncpg://${APP_NAME}:${SECRET_KEY}@localhost:5432/${APP_NAME}
       - API_BASE_URL=${API_BASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
 
   # Контейнер для postgres
   postgres:
@@ -24,52 +25,31 @@ services:
       - POSTGRES_USER=${APP_NAME}
       - POSTGRES_PASSWORD=${SECRET_KEY}
       - POSTGRES_DB=${APP_NAME}
+      - KEYCLOAK_DB=${APP_NAME}_keycloak
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
   
-  # Airflow Webserver
-  airflow-webserver:
-    container_name: ${APP_NAME}-airflow-webserver
-    image: apache/airflow:3.1.0
-    restart: always
-    depends_on:
-      - postgres
+  # Контейнер для keycloak
+  keycloak:
+    container_name: ${APP_NAME}-keycloak
+    image: quay.io/keycloak/keycloak:26.4
     environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${APP_NAME}:${SECRET_KEY}@postgres:5432/${APP_NAME}_airflow
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - AIRFLOW__WEBSERVER__EXPOSE_CONFIG=True
-      - _AIRFLOW_WWW_USER_CREATE=True
-      - _AIRFLOW_WWW_USER_USERNAME=${APP_NAME}
-      - _AIRFLOW_WWW_USER_PASSWORD=${SECRET_KEY}
-      - _AIRFLOW_WWW_USER_FIRSTNAME=Admin
-      - _AIRFLOW_WWW_USER_LASTNAME=${APP_NAME}
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
+      - ENV_KC_DB=postgres
+      - ENV_KC_DB_URL=postgresql+asyncpg://${APP_NAME}:${SECRET_KEY}@localhost:5432/${APP_NAME}_keycloak
+      - ENV_KC_DB_USERNAME=${APP_NAME}
+      - ENV_KC_DB_PASSWORD=${SECRET_KEY}
+      - ENV_KC_HOSTNAME=localhost
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${APP_NAME}_admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=$SECRET_KEY
+
     ports:
       - "8080:8080"
-
-  # Airflow Scheduler
-  airflow-scheduler:
-    container_name: ${APP_NAME}-airflow-scheduler
-    image: apache/airflow:3.1.0
-    restart: always
+    command: ["start-dev", "--http-port", "8080", "--log", "console"] 
     depends_on:
       - postgres
-      - airflow-webserver
-    environment:
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${APP_NAME}:${SECRET_KEY}@postgres:5432/${APP_NAME}_airflow
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-      - ./airflow/logs:/opt/airflow/logs
-      - ./airflow/plugins:/opt/airflow/plugins
-    command: airflow scheduler
+
 
 volumes:
   postgres_data:

@@ -12,7 +12,7 @@ router = APIRouter(prefix="")
         500: {"description": "Internal server error"}
     }
 )
-def get_version():
+async def get_version():
     """Get number of version"""
     
     return Version(version="0.01")
