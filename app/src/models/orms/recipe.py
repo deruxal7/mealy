@@ -1,9 +1,9 @@
 from sqlalchemy import (
-    ARRAY,
     Column, 
     Integer,
     String,
 )
+from sqlalchemy.dialects.postgresql import ARRAY
 
 from .base import BaseORM
 

@@ -1,4 +1,5 @@
 from typing import List
+from fastapi import Query
 from pydantic import Field, PositiveInt
 
 from .base import BaseModel
@@ -20,3 +21,13 @@ class RecipeOut(BaseModel):
     cooking_time: PositiveInt = Field(..., description="Time to cook (min)")
     tags: List[str] = Field(..., description="Tags")
     # author_id: PositiveInt = Field(..., description="Author ID")
+
+class RecipeByIngridientsIn(BaseModel):
+    ingredients: List[str]
+
+    @classmethod
+    def parser(
+        cls,
+        ingredients: List[str] = Query(..., description="List of ingredients")
+    ):
+        return {"ingredients": ingredients}

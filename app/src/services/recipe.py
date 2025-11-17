@@ -3,4 +3,4 @@ from ..models.orms import RecipeORM
 
 @with_model(RecipeORM)
 class RecipeCRUD(BaseCRUD):
-    pass
+    model = RecipeORM
